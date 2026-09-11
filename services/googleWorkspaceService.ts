@@ -78,7 +78,6 @@ export const exportToGoogleDocs = async (title: string, content: string): Promis
     await authorize();
 
     try {
-        // 1. Create a new empty document
         const createResponse = await gapi.client.docs.documents.create({
             title: title
         });
@@ -89,20 +88,122 @@ export const exportToGoogleDocs = async (title: string, content: string): Promis
             throw new Error("Failed to create document.");
         }
 
-        // 2. Insert content into the document
-        // We do a simple insert text at index 1
+        let plainText = "";
+        let currentIndex = 1;
+        const formatRequests: any[] = [];
+        
+        const lines = content.split('\n');
+        
+        for (let line of lines) {
+            // Detect layout roles
+            let isTitle = line.includes('Manual Book Draft');
+            let isH1 = /^\d+\.\s/.test(line.trim());
+            let isH2 = line.includes('**Fungsi**') || line.includes('**Manfaat**') || line.includes('**Langkah Penggunaan**');
+            let isSubtitle = /^\(.*\)$/.test(line.trim());
+            let isDivider = line.includes('=================================') || line.includes('---');
+            
+            // Clean markdown tokens
+            line = line.replace(/\*\*/g, '');
+            line = line.replace(/\*/g, '');
+            
+            const textToInsert = line + '\n';
+            const startIndex = currentIndex;
+            const endIndex = startIndex + textToInsert.length;
+            
+            plainText += textToInsert;
+            currentIndex = endIndex;
+            
+            // Add formatting requests for non-empty structural lines
+            if (textToInsert.trim().length > 0 && !isDivider) {
+                const range = { startIndex, endIndex };
+                
+                // Base Paragraph Text Style (Arial, 11pt, Dark Gray)
+                formatRequests.push({
+                    updateTextStyle: {
+                        range,
+                        textStyle: {
+                            weightedFontFamily: { fontFamily: 'Arial' },
+                            fontSize: { magnitude: 11, unit: 'PT' },
+                            foregroundColor: { color: { rgbColor: { red: 0.1, green: 0.1, blue: 0.1 } } }
+                        },
+                        fields: 'weightedFontFamily,fontSize,foregroundColor'
+                    }
+                });
+                
+                // Title Override
+                if (isTitle) {
+                    formatRequests.push({
+                        updateTextStyle: {
+                            range,
+                            textStyle: { fontSize: { magnitude: 24, unit: 'PT' }, bold: true },
+                            fields: 'fontSize,bold'
+                        }
+                    });
+                    formatRequests.push({
+                        updateParagraphStyle: {
+                            range,
+                            paragraphStyle: { alignment: 'CENTER' },
+                            fields: 'alignment'
+                        }
+                    });
+                } 
+                // Heading 1 Override (NasDem Blue)
+                else if (isH1) {
+                    formatRequests.push({
+                        updateTextStyle: {
+                            range,
+                            textStyle: { 
+                                fontSize: { magnitude: 16, unit: 'PT' }, 
+                                bold: true, 
+                                foregroundColor: { color: { rgbColor: { red: 0, green: 43/255, blue: 92/255 } } } 
+                            },
+                            fields: 'fontSize,bold,foregroundColor'
+                        }
+                    });
+                } 
+                // Heading 2 Override
+                else if (isH2) {
+                    formatRequests.push({
+                        updateTextStyle: {
+                            range,
+                            textStyle: { fontSize: { magnitude: 11, unit: 'PT' }, bold: true },
+                            fields: 'fontSize,bold'
+                        }
+                    });
+                } 
+                // Subtitle Override
+                else if (isSubtitle) {
+                    formatRequests.push({
+                        updateTextStyle: {
+                            range,
+                            textStyle: { italic: true, foregroundColor: { color: { rgbColor: { red: 0.4, green: 0.4, blue: 0.4 } } } },
+                            fields: 'italic,foregroundColor'
+                        }
+                    });
+                }
+                
+                // Paragraph Spacing
+                formatRequests.push({
+                    updateParagraphStyle: {
+                        range,
+                        paragraphStyle: {
+                            spaceAbove: { magnitude: isH1 ? 24 : (isH2 ? 14 : 0), unit: 'PT' },
+                            spaceBelow: { magnitude: isH1 ? 4 : (isH2 ? 4 : 8), unit: 'PT' },
+                            indentStart: { magnitude: (!isTitle && !isH1 && !isH2 && !isSubtitle) ? 18 : 0, unit: 'PT' }
+                        },
+                        fields: 'spaceAbove,spaceBelow,indentStart'
+                    }
+                });
+            }
+        }
+
+        // Apply everything in a single batch
         await gapi.client.docs.documents.batchUpdate({
             documentId: documentId,
             resource: {
                 requests: [
-                    {
-                        insertText: {
-                            location: {
-                                index: 1,
-                            },
-                            text: content
-                        }
-                    }
+                    { insertText: { location: { index: 1 }, text: plainText } },
+                    ...formatRequests
                 ]
             }
         });

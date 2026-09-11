@@ -216,7 +216,22 @@ const App: React.FC = () => {
         setIsQueryLoading(true);
 
         try {
-            const contextPrompt = `[Context: Please write this specifically for the "${targetRole}" role. Ignore features not relevant to them, and tailor the tone and depth accordingly.]\n\nUser Query: ${message}`;
+            const contextPrompt = `[Context: Please write this specifically for the "${targetRole}" role. Ignore features not relevant to them, and tailor the tone and depth accordingly.
+            
+            FORMATTING & LAYOUT RULES (CRITICAL):
+            1. Always use structured hierarchical numbering for sections (e.g., 1., 2., 3.).
+            2. For each main section, use the format:
+               [Number]. [Feature Name]
+               (Optional Subtitle in parentheses if applicable)
+            3. Each feature section MUST contain these exact sub-headings in bold:
+               - **Fungsi**: (Brief description of the function)
+               - **Manfaat**: (Bullet points of benefits)
+               - **Langkah Penggunaan**: (Numbered list of steps)
+            4. Use bullet points (●) for lists under "Manfaat".
+            5. Use nested numbering (1., 2., 3.) and bullet points (○, ■) for steps under "Langkah Penggunaan".
+            6. Do not include introductory conversational text like "Here is the manual...". Just output the raw manual book content directly.]
+
+User Query: ${message}`;
             const result = await geminiService.fileSearch(activeRagStoreName, contextPrompt);
             const modelMessage: ChatMessage = {
                 role: 'model',

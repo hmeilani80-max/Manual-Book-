@@ -7,6 +7,7 @@ import { ChatMessage } from '../types';
 import Spinner from './Spinner';
 import SendIcon from './icons/SendIcon';
 import RefreshIcon from './icons/RefreshIcon';
+import { exportToGoogleDocs } from '../services/googleWorkspaceService';
 
 interface ChatInterfaceProps {
     documentName: string;
@@ -15,12 +16,15 @@ interface ChatInterfaceProps {
     onSendMessage: (message: string) => void;
     onNewChat: () => void;
     exampleQuestions: string[];
+    targetRole: string;
+    setTargetRole: (role: string) => void;
 }
 
-const ChatInterface: React.FC<ChatInterfaceProps> = ({ documentName, history, isQueryLoading, onSendMessage, onNewChat, exampleQuestions }) => {
+const ChatInterface: React.FC<ChatInterfaceProps> = ({ documentName, history, isQueryLoading, onSendMessage, onNewChat, exampleQuestions, targetRole, setTargetRole }) => {
     const [query, setQuery] = useState('');
     const [currentSuggestion, setCurrentSuggestion] = useState('');
     const [modalContent, setModalContent] = useState<string | null>(null);
+    const [isExporting, setIsExporting] = useState(false);
     const chatEndRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
@@ -123,19 +127,50 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ documentName, history, is
         chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
     }, [history, isQueryLoading]);
 
+    const handleExport = async () => {
+        setIsExporting(true);
+        try {
+            // Combine all AI responses into a single document string
+            const manualContent = history
+                .filter(msg => msg.role === 'model')
+                .map(msg => msg.parts[0].text)
+                .join('\n\n---\n\n');
+            
+            const url = await exportToGoogleDocs(`Manual Book - ${new Date().toLocaleDateString()}`, manualContent);
+            window.open(url, '_blank');
+        } catch (error) {
+            console.error("Failed to export:", error);
+            alert("Failed to export to Google Docs. Please ensure you granted permission.");
+        } finally {
+            setIsExporting(false);
+        }
+    };
+
     return (
         <div className="flex flex-col h-full relative">
             <header className="absolute top-0 left-0 right-0 p-4 bg-gem-onyx/80 backdrop-blur-sm z-10 flex justify-between items-center border-b border-gem-mist">
                 <div className="w-full max-w-4xl mx-auto flex justify-between items-center px-4">
                     <h1 className="text-2xl font-bold text-gem-offwhite truncate" title={`Chat with ${documentName}`}>Chat with {documentName}</h1>
-                    <button
-                        onClick={onNewChat}
-                        className="flex items-center px-4 py-2 bg-gem-blue hover:bg-blue-500 rounded-full text-white transition-colors flex-shrink-0"
-                        title="End current chat and start a new one"
-                    >
-                        <RefreshIcon />
-                        <span className="ml-2 hidden sm:inline">New Chat</span>
-                    </button>
+                    <div className="flex items-center space-x-2">
+                        {history.length > 0 && (
+                            <button
+                                onClick={handleExport}
+                                disabled={isExporting}
+                                className="flex items-center px-4 py-2 bg-gem-teal hover:bg-teal-600 rounded-full text-white transition-colors flex-shrink-0 disabled:opacity-50"
+                                title="Export Manual to Google Docs"
+                            >
+                                <span className="hidden sm:inline">{isExporting ? 'Exporting...' : 'Export to Docs'}</span>
+                            </button>
+                        )}
+                        <button
+                            onClick={onNewChat}
+                            className="flex items-center px-4 py-2 bg-gem-blue hover:bg-blue-500 rounded-full text-white transition-colors flex-shrink-0"
+                            title="End current chat and start a new one"
+                        >
+                            <RefreshIcon />
+                            <span className="ml-2 hidden sm:inline">New Chat</span>
+                        </button>
+                    </div>
                 </div>
             </header>
 
@@ -197,11 +232,22 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ documentName, history, is
                         )}
                     </div>
                      <form onSubmit={handleSubmit} className="flex items-center space-x-3">
+                        <select
+                            value={targetRole}
+                            onChange={(e) => setTargetRole(e.target.value)}
+                            className="bg-gem-mist text-gem-offwhite border border-gem-mist/50 rounded-full py-3 px-4 focus:outline-none focus:ring-2 focus:ring-gem-blue"
+                            title="Select Target Audience Role"
+                        >
+                            <option value="General User">General User</option>
+                            <option value="Admin">Admin</option>
+                            <option value="Staff">Staff</option>
+                            <option value="Executive">Executive</option>
+                        </select>
                         <input
                             type="text"
                             value={query}
                             onChange={(e) => setQuery(e.target.value)}
-                            placeholder="Ask a question about the manuals..."
+                            placeholder={`Ask a question for ${targetRole}...`}
                             className="flex-grow bg-gem-mist border border-gem-mist/50 rounded-full py-3 px-5 focus:outline-none focus:ring-2 focus:ring-gem-blue"
                             disabled={isQueryLoading}
                         />

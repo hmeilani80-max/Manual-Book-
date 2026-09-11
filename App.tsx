@@ -35,6 +35,7 @@ const App: React.FC = () => {
     const [exampleQuestions, setExampleQuestions] = useState<string[]>([]);
     const [documentName, setDocumentName] = useState<string>('');
     const [files, setFiles] = useState<File[]>([]);
+    const [targetRole, setTargetRole] = useState<string>('General User');
     const ragStoreNameRef = useRef(activeRagStoreName);
 
     useEffect(() => {
@@ -215,7 +216,8 @@ const App: React.FC = () => {
         setIsQueryLoading(true);
 
         try {
-            const result = await geminiService.fileSearch(activeRagStoreName, message);
+            const contextPrompt = `[Context: Please write this specifically for the "${targetRole}" role. Ignore features not relevant to them, and tailor the tone and depth accordingly.]\n\nUser Query: ${message}`;
+            const result = await geminiService.fileSearch(activeRagStoreName, contextPrompt);
             const modelMessage: ChatMessage = {
                 role: 'model',
                 parts: [{ text: result.text }],
@@ -271,6 +273,8 @@ const App: React.FC = () => {
                     onSendMessage={handleSendMessage}
                     onNewChat={handleEndChat}
                     exampleQuestions={exampleQuestions}
+                    targetRole={targetRole}
+                    setTargetRole={setTargetRole}
                 />;
             case AppStatus.Error:
                  return (

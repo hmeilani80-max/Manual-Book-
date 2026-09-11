@@ -130,13 +130,17 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ documentName, history, is
     const handleExport = async () => {
         setIsExporting(true);
         try {
-            // Combine all AI responses into a single document string
+            // Combine all AI responses and user questions into a single document string
             const manualContent = history
-                .filter(msg => msg.role === 'model')
-                .map(msg => msg.parts[0].text)
+                .map(msg => {
+                    const prefix = msg.role === 'user' ? 'Q: ' : 'A: ';
+                    return `${prefix}${msg.parts[0].text}`;
+                })
                 .join('\n\n---\n\n');
             
-            const url = await exportToGoogleDocs(`Manual Book - ${new Date().toLocaleDateString()}`, manualContent);
+            const header = `Manual Book Draft\nGenerated on: ${new Date().toLocaleDateString()}\nTarget Audience: ${targetRole}\nBased on document: ${documentName}\n\n=================================\n\n`;
+            
+            const url = await exportToGoogleDocs(`Manual Book - ${targetRole} - ${new Date().toLocaleDateString()}`, header + manualContent);
             window.open(url, '_blank');
         } catch (error) {
             console.error("Failed to export:", error);

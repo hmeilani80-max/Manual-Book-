@@ -49,8 +49,10 @@ const App: React.FC = () => {
                 setIsApiKeySelected(hasKey);
             } catch (e) {
                 console.error("Error checking for API key:", e);
-                setIsApiKeySelected(false); // Assume no key on error
+                setIsApiKeySelected(true); // Default to true on error
             }
+        } else {
+            setIsApiKeySelected(true);
         }
     }, []);
 
@@ -122,9 +124,18 @@ const App: React.FC = () => {
     };
 
     const handleUploadAndStartChat = async () => {
-        if (!isApiKeySelected) {
-            setApiKeyError("Please select your Gemini API Key first.");
-            throw new Error("API Key is required.");
+        if (!isApiKeySelected && window.aistudio?.openSelectKey) {
+            try {
+                await window.aistudio.openSelectKey();
+                const hasKey = (await window.aistudio.hasSelectedApiKey?.()) ?? true;
+                setIsApiKeySelected(hasKey);
+                if (!hasKey) {
+                    setApiKeyError("Pilih API key untuk melanjutkan.");
+                    return;
+                }
+            } catch (err) {
+                console.error("Failed to select API key:", err);
+            }
         }
         if (files.length === 0) return;
         
@@ -260,7 +271,7 @@ User Query: ${message}`;
                     </div>
                 );
             case AppStatus.Welcome:
-                 return <WelcomeScreen onUpload={handleUploadAndStartChat} apiKeyError={apiKeyError} files={files} setFiles={setFiles} isApiKeySelected={isApiKeySelected} onSelectKey={handleSelectKey} />;
+                 return <WelcomeScreen onUpload={handleUploadAndStartChat} apiKeyError={apiKeyError} files={files} setFiles={setFiles} />;
             case AppStatus.Uploading:
                 let icon = null;
                 if (uploadProgress?.message === "Creating document index...") {
@@ -302,7 +313,7 @@ User Query: ${message}`;
                     </div>
                 );
             default:
-                 return <WelcomeScreen onUpload={handleUploadAndStartChat} apiKeyError={apiKeyError} files={files} setFiles={setFiles} isApiKeySelected={isApiKeySelected} onSelectKey={handleSelectKey} />;
+                 return <WelcomeScreen onUpload={handleUploadAndStartChat} apiKeyError={apiKeyError} files={files} setFiles={setFiles} />;
         }
     }
 

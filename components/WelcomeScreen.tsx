@@ -15,8 +15,6 @@ interface WelcomeScreenProps {
     apiKeyError: string | null;
     files: File[];
     setFiles: React.Dispatch<React.SetStateAction<File[]>>;
-    isApiKeySelected: boolean;
-    onSelectKey: () => Promise<void>;
 }
 
 const sampleDocuments = [
@@ -36,7 +34,7 @@ const sampleDocuments = [
     }
 ];
 
-const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onUpload, apiKeyError, files, setFiles, isApiKeySelected, onSelectKey }) => {
+const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onUpload, apiKeyError, files, setFiles }) => {
     const [isDragging, setIsDragging] = useState(false);
     const [loadingSample, setLoadingSample] = useState<string | null>(null);
 
@@ -92,8 +90,6 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onUpload, apiKeyError, fi
         try {
             await onUpload();
         } catch (error) {
-            // Error is handled by the parent component, but we catch it here
-            // to prevent an "uncaught promise rejection" warning in the console.
             console.error("Upload process failed:", error);
         }
     };
@@ -102,47 +98,50 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onUpload, apiKeyError, fi
         setFiles(prevFiles => prevFiles.filter((_, index) => index !== indexToRemove));
     };
 
-    const handleSelectKeyClick = async (e: React.MouseEvent<HTMLButtonElement>) => {
-        e.preventDefault();
-        await onSelectKey();
-    };
-
     return (
         <div className="flex flex-col items-center justify-center min-h-screen p-4 sm:p-6 lg:p-8">
             <div className="w-full max-w-3xl text-center">
-                <h1 className="text-4xl sm:text-5xl font-bold mb-2">Chat With Your Document</h1>
-                <p className="text-gem-offwhite/70 mb-8">
-                    Powered by <strong className="font-semibold text-gem-offwhite">FileSearch</strong>. Upload a manual or select example to see RAG in action.
+                <h1 className="text-4xl sm:text-5xl font-bold tracking-tight mb-3 text-gem-offwhite">
+                    Manual Book Generator
+                </h1>
+                <p className="text-gem-offwhite/70 mb-8 max-w-xl mx-auto text-base sm:text-lg">
+                    Unggah catatan modul, dokumen fitur, atau manual untuk menyusun panduan pengguna terstruktur otomatis.
                 </p>
 
-                <div className="w-full max-w-xl mx-auto mb-8">
-                     {!isApiKeySelected ? (
-                        <button
-                            onClick={handleSelectKeyClick}
-                            className="w-full bg-gem-blue hover:bg-blue-500 text-white font-semibold rounded-lg py-3 px-5 text-center focus:outline-none focus:ring-2 focus:ring-gem-blue"
-                        >
-                            Select Gemini API Key to Begin
-                        </button>
-                    ) : (
-                        <div className="w-full bg-gem-slate border border-gem-mist/50 rounded-lg py-3 px-5 text-center text-gem-teal font-semibold">
-                            ✓ API Key Selected
-                        </div>
-                    )}
-                     {apiKeyError && <p className="text-red-500 text-sm mt-2">{apiKeyError}</p>}
-                </div>
+                {apiKeyError && (
+                    <div className="w-full max-w-xl mx-auto mb-6 p-3 bg-red-500/10 border border-red-500/30 rounded-xl text-red-400 text-sm">
+                        {apiKeyError}
+                    </div>
+                )}
 
                 <div 
-                    className={`relative border-2 border-dashed rounded-lg p-10 text-center transition-colors mb-6 ${isDragging ? 'border-gem-blue bg-gem-mist/10' : 'border-gem-mist/50'}`}
-                    onDrop={handleDrop} onDragOver={handleDragOver} onDragLeave={handleDragLeave}
+                    className={`relative border-2 border-dashed rounded-2xl p-10 text-center transition-all mb-6 bg-gem-slate/40 backdrop-blur-sm shadow-sm ${
+                        isDragging ? 'border-gem-blue bg-gem-blue/5' : 'border-gem-mist/50 hover:border-gem-blue/40'
+                    }`}
+                    onDrop={handleDrop} 
+                    onDragOver={handleDragOver} 
+                    onDragLeave={handleDragLeave}
                 >
                     <div className="flex flex-col items-center justify-center">
                         <UploadCloudIcon />
-                        <p className="mt-4 text-lg text-gem-offwhite/80">Drag & drop your PDF, .txt, or .md file here.</p>
-                        <input id="file-upload" type="file" multiple className="hidden" onChange={handleFileChange} accept=".pdf,.txt,.md"/>
-                         <label 
+                        <p className="mt-4 text-base sm:text-lg text-gem-offwhite/90 font-medium">
+                            Tarik & letakkan file dokumen (PDF, TXT, atau MD) di sini
+                        </p>
+                        <p className="text-xs text-gem-offwhite/50 mt-1">
+                            Bisa berupa catatan ringkas dashboard, FAQ, atau panduan modul
+                        </p>
+                        <input 
+                            id="file-upload" 
+                            type="file" 
+                            multiple 
+                            className="hidden" 
+                            onChange={handleFileChange} 
+                            accept=".pdf,.txt,.md"
+                        />
+                        <label 
                             htmlFor="file-upload" 
-                            className="mt-4 cursor-pointer px-6 py-2 bg-gem-blue text-white rounded-full font-semibold hover:bg-blue-500 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gem-onyx focus:ring-gem-blue" 
-                            title="Select files from your device"
+                            className="mt-5 cursor-pointer px-6 py-2.5 bg-gem-blue text-white rounded-full font-semibold hover:bg-blue-600 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gem-blue shadow-sm" 
+                            title="Pilih file dari perangkat Anda"
                             tabIndex={0}
                             onKeyDown={e => {
                                 if (e.key === 'Enter' || e.key === ' ') {
@@ -150,26 +149,26 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onUpload, apiKeyError, fi
                                     (document.getElementById('file-upload') as HTMLInputElement)?.click();
                                 }
                             }}
-                         >
-                            Or Browse Files
+                        >
+                            Pilih Dokumen
                         </label>
                     </div>
                 </div>
 
                 {files.length > 0 && (
                     <div className="w-full max-w-xl mx-auto mb-6 text-left">
-                        <h4 className="font-semibold mb-2">Selected Files ({files.length}):</h4>
-                        <ul className="max-h-36 overflow-y-auto space-y-1 pr-2">
+                        <h4 className="font-semibold mb-2 text-gem-offwhite/90 text-sm">Dokumen Terpilih ({files.length}):</h4>
+                        <ul className="max-h-40 overflow-y-auto space-y-1.5 pr-1">
                             {files.map((file, index) => (
-                                <li key={`${file.name}-${index}`} className="text-sm bg-gem-mist/50 p-2 rounded-md flex justify-between items-center group">
-                                    <span className="truncate" title={file.name}>{file.name}</span>
-                                    <div className="flex items-center flex-shrink-0">
-                                        <span className="text-xs text-gem-offwhite/50 ml-2">{(file.size / 1024).toFixed(2)} KB</span>
+                                <li key={`${file.name}-${index}`} className="text-sm bg-gem-slate border border-gem-mist/40 p-2.5 rounded-xl flex justify-between items-center shadow-xs">
+                                    <span className="truncate font-medium text-gem-offwhite" title={file.name}>{file.name}</span>
+                                    <div className="flex items-center flex-shrink-0 ml-3">
+                                        <span className="text-xs text-gem-offwhite/50">{(file.size / 1024).toFixed(1)} KB</span>
                                         <button 
                                             onClick={() => handleRemoveFile(index)}
-                                            className="ml-2 p-1 text-red-400 hover:text-red-300 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
-                                            aria-label={`Remove ${file.name}`}
-                                            title="Remove this file"
+                                            className="ml-2.5 p-1 text-red-500 hover:text-red-400 rounded-md transition-colors"
+                                            aria-label={`Hapus ${file.name}`}
+                                            title="Hapus file ini"
                                         >
                                             <TrashIcon />
                                         </button>
@@ -184,39 +183,35 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onUpload, apiKeyError, fi
                     {files.length > 0 && (
                         <button 
                             onClick={handleConfirmUpload}
-                            disabled={!isApiKeySelected}
-                            className="w-full px-6 py-3 rounded-md bg-gem-blue hover:bg-blue-500 text-white font-bold transition-colors disabled:bg-gem-mist/50 disabled:cursor-not-allowed"
-                            title={!isApiKeySelected ? "Please select an API key first" : "Start chat session with the selected files"}
+                            className="w-full px-6 py-3.5 rounded-xl bg-gem-blue hover:bg-blue-600 text-white font-bold transition-all shadow-md active:scale-[0.99]"
+                            title="Mulai sesi tanya jawab dan penyusunan manual"
                         >
-                            Upload and Chat
+                            Proses & Buat Manual Book
                         </button>
                     )}
                 </div>
                 
-                <div className="flex items-center my-8">
-                    <div className="flex-grow border-t border-gem-mist"></div>
-                    <span className="flex-shrink mx-4 text-gem-offwhite/60">OR</span>
-                    <div className="flex-grow border-t border-gem-mist"></div>
+                <div className="flex items-center my-8 max-w-xl mx-auto">
+                    <div className="flex-grow border-t border-gem-mist/50"></div>
+                    <span className="flex-shrink mx-4 text-xs font-semibold text-gem-offwhite/50 tracking-wider">ATAU PILIH CONTOH</span>
+                    <div className="flex-grow border-t border-gem-mist/50"></div>
                 </div>
 
-                <div className="text-left mb-4">
-                    <p className="text-gem-offwhite/80">Try an example:</p>
-                </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-12">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-xl mx-auto mb-8">
                     {sampleDocuments.map(doc => (
                         <button
                             key={doc.name}
                             onClick={() => handleSelectSample(doc.name, doc.url, doc.fileName)}
                             disabled={!!loadingSample}
-                            className="bg-gem-slate p-4 rounded-lg border border-gem-mist/30 hover:border-gem-blue/50 hover:bg-gem-mist/10 transition-all text-left flex items-center space-x-4 disabled:opacity-50 disabled:cursor-wait"
-                            title={`Chat with the ${doc.name}`}
+                            className="bg-gem-slate p-4 rounded-xl border border-gem-mist/50 hover:border-gem-blue/50 hover:bg-gem-mist/10 transition-all text-left flex items-center space-x-4 disabled:opacity-50 disabled:cursor-wait shadow-xs"
+                            title={`Coba dokumen ${doc.name}`}
                         >
-                            <div className="w-16 h-16 flex items-center justify-center flex-shrink-0 bg-gem-mist/20 rounded-lg">
+                            <div className="w-12 h-12 flex items-center justify-center flex-shrink-0 bg-gem-mist/30 rounded-lg">
                                 {loadingSample === doc.name ? <Spinner /> : doc.icon}
                             </div>
-                            <div>
-                                <p className="font-semibold text-gem-offwhite">{doc.name}</p>
-                                <p className="text-sm text-gem-offwhite/60">{doc.details}</p>
+                            <div className="overflow-hidden">
+                                <p className="font-semibold text-gem-offwhite text-sm truncate">{doc.name}</p>
+                                <p className="text-xs text-gem-offwhite/60">{doc.details}</p>
                             </div>
                         </button>
                     ))}
